@@ -9,10 +9,10 @@ This software is a implementation of aSTEAM Project (Next-Generation Information
 ## Requirements and Dependencies
 
 - ubuntu 16.04 LTS
-- [chromium source and build](https://chromium.googlesource.com/chromium/src/+/master/docs/linux/build_instructions.md)
+- [Chromium source and build](https://chromium.googlesource.com/chromium/src/+/master/docs/linux/build_instructions.md)
 - patch sequence : chromium structure tester -> preload scanner tester -> script priority change
 
 ## Instructions
 
-- download [chromium](https://chromium.googlesource.com/chromium/src/+/master/docs/linux/build_instructions.md) first, then build
+- download [Chromium](https://chromium.googlesource.com/chromium/src/+/master/docs/linux/build_instructions.md) first, then build
 - patch -pNUM < 'patch file name' (follow sequece written in requirements)
