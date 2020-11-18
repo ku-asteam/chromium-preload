@@ -10,7 +10,7 @@ This software is a implementation of aSTEAM Project (Next-Generation Information
 
 - ubuntu 16.04 LTS
 - [Chromium source and build](https://chromium.googlesource.com/chromium/src/+/master/docs/linux/build_instructions.md)
-- patch sequence : chromium structure tester -> preload scanner tester -> script priority change
+- patch sequence : chromium structure tester -> preload scanner process tester -> script priority change
 
 ## Instructions
 
