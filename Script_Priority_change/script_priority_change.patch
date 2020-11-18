@@ -1,0 +1,192 @@
+diff --git a/third_party/blink/renderer/core/html/parser/html_preload_scanner.cc b/third_party/blink/renderer/core/html/parser/html_preload_scanner.cc
+index e5b2ae7..9f659c9 100644
+--- a/third_party/blink/renderer/core/html/parser/html_preload_scanner.cc
++++ b/third_party/blink/renderer/core/html/parser/html_preload_scanner.cc
+@@ -353,11 +353,11 @@ class TokenPreloadScanner::StartTagScanner {
+     request->SetCharset(Charset());
+ 
+     // fix : script priority change
+-    // if ((Match(tag_impl_, html_names::kScriptTag))){
+-    //   request->SetDefer(FetchParameters::kNoDefer);
+-    // }else{
++    if ((Match(tag_impl_, html_names::kScriptTag))){
++      request->SetDefer(FetchParameters::kNoDefer);
++    }else{
+       request->SetDefer(defer_);
+-    // }
++    }
+     
+     LoadingAttrValue effective_loading_attr_value = loading_attr_value_;
+     // If the 'lazyload' feature policy is enforced, the attribute value
+@@ -1103,12 +1103,12 @@ void TokenPreloadScanner::ScanCommon(
+         css_scanner_.Scan(token.Data(), source, requests,
+                           predicted_base_element_url_);
+         // fix : preload_scanner_tester +
+-        fout << "kCharacter_instyle" << std::endl;
++        // fout << "kCharacter_instyle" << std::endl;
+       }
+       // fix : preload_scanner_tester +
+-      else{
+-        fout << "kCharacter_normal" << std::endl;
+-      }
++      // else{
++      //   fout << "kCharacter_normal" << std::endl;
++      // }
+       fout.close();
+       return;
+     }
+@@ -1118,7 +1118,7 @@ void TokenPreloadScanner::ScanCommon(
+         if (template_count_)
+           --template_count_;
+         // fix : preload_scanner_tester +
+-        fout << "kEndtag_1" << std::endl;
++        // fout << "kEndtag_1" << std::endl;
+         fout.close();
+         return;
+       }
+@@ -1127,14 +1127,14 @@ void TokenPreloadScanner::ScanCommon(
+           css_scanner_.Reset();
+         in_style_ = false;
+         // fix : preload_scanner_tester +
+-        fout << "kEndtag_2" << std::endl;
++        // fout << "kEndtag_2" << std::endl;
+         fout.close();
+         return;
+       }
+       if (Match(tag_impl, html_names::kScriptTag)) {
+         in_script_ = false;
+         // fix : preload_scanner_tester +
+-        fout << "kEndtag_3" << std::endl;
++        // fout << "kScript_tag" << std::endl;
+         fout.close();
+         return;
+       }
+@@ -1142,13 +1142,13 @@ void TokenPreloadScanner::ScanCommon(
+         in_picture_ = false;
+         picture_data_.picked = false;
+         // fix : preload_scanner_tester +
+-        fout << "kEndtag_4" << std::endl;
++        // fout << "kEndtag_4" << std::endl;
+         fout.close();
+       }
+       // +
+       else{
+         // fix : preload_scanner_tester +
+-        fout << "kEndtag_nothing" << std::endl;
++        // fout << "kEndtag_nothing" << std::endl;
+         fout.close();
+       }
+       return;
+@@ -1156,7 +1156,7 @@ void TokenPreloadScanner::ScanCommon(
+     case HTMLToken::kStartTag: {
+       if (template_count_){
+         // fix : preload_scanner_tester +
+-        fout << "kStarttag_1" << std::endl;
++        // fout << "kStarttag_1" << std::endl;
+         fout.close();
+         return;
+       }
+@@ -1165,14 +1165,14 @@ void TokenPreloadScanner::ScanCommon(
+       if (Match(tag_impl, html_names::kTemplateTag)) {
+         ++template_count_;
+         // fix : preload_scanner_tester +
+-        fout << "kStarttag_2" << std::endl;
++        // fout << "kStarttag_2" << std::endl;
+         fout.close();
+         return;
+       }
+       if (Match(tag_impl, html_names::kStyleTag)) {
+         in_style_ = true;
+         // fix : preload_scanner_tester +
+-        fout << "kStarttag_3" << std::endl;
++        // fout << "kStarttag_3" << std::endl;
+         fout.close();
+         return;
+       }
+@@ -1180,20 +1180,20 @@ void TokenPreloadScanner::ScanCommon(
+       // too.
+       if (Match(tag_impl, html_names::kScriptTag)) {
+         // fix : preload_scanner_tester +
+-        fout << "kStarttag_4" << std::endl;
++        fout << "script_tag" << std::endl;
+         in_script_ = true;
+       }
+       if (Match(tag_impl, html_names::kBaseTag)) {
+         // The first <base> element is the one that wins.
+         if (!predicted_base_element_url_.IsEmpty()){
+           // fix : preload_scanner_tester +
+-          fout << "kStarttag_5" << std::endl;
++          // fout << "kStarttag_5" << std::endl;
+           fout.close();
+           return;
+         }
+         UpdatePredictedBaseURL(token);
+         // fix : preload_scanner_tester +
+-        fout << "kStarttag_6" << std::endl;
++        // fout << "kStarttag_6" << std::endl;
+         fout.close();
+         return; 
+       }
+@@ -1240,7 +1240,7 @@ void TokenPreloadScanner::ScanCommon(
+         in_picture_ = true;
+         picture_data_ = PictureData();
+         // fix : preload_scanner_tester +
+-        fout << "kStarttag_8" << std::endl;
++        // fout << "kStarttag_8" << std::endl;
+         fout.close();
+         return;
+       } else if (!Match(tag_impl, html_names::kSourceTag) &&
+@@ -1250,7 +1250,8 @@ void TokenPreloadScanner::ScanCommon(
+         in_picture_ = false;
+         picture_data_.picked = false;
+         // fix : preload_scanner_tester +
+-        fout << "kStarttag_9" << std::endl;
++        // fout << "kStarttag_9" << std::endl;
++        fout.close();
+       }
+ 
+       StartTagScanner scanner(
+@@ -1274,30 +1275,30 @@ void TokenPreloadScanner::ScanCommon(
+ 
+       if (request) {
+         // fix : preload_scanner_tester +
+-        if(Match(tag_impl,html_names::kScriptTag)){
+-          fout << "kscript prelaod request" << std::endl;
+-          if(request->DeferOption() == FetchParameters::kNoDefer) fout << "no defer" << std::endl; 
+-          if(request->DeferOption() == FetchParameters::kLazyLoad) fout << "lazy load" << std::endl; 
+-          if(request->DeferOption() == FetchParameters::kIdleLoad) fout << "idle load" << std::endl; 
+-        }else if(Match(tag_impl, html_names::kLinkTag)){
+-          fout << "klinktag preload request" << std::endl;
+-          if(request->DeferOption() == FetchParameters::kNoDefer) fout << "no defer" << std::endl; 
+-          if(request->DeferOption() == FetchParameters::kLazyLoad) fout << "lazy load" << std::endl; 
+-          if(request->DeferOption() == FetchParameters::kIdleLoad) fout << "idle load" << std::endl; 
+-        }
++        // if(Match(tag_impl,html_names::kScriptTag)){
++        //   fout << "kscript prelaod request" << std::endl;
++        //   if(request->DeferOption() == FetchParameters::kNoDefer) fout << "no defer" << std::endl; 
++        //   if(request->DeferOption() == FetchParameters::kLazyLoad) fout << "lazy load" << std::endl; 
++        //   if(request->DeferOption() == FetchParameters::kIdleLoad) fout << "idle load" << std::endl; 
++        // }else if(Match(tag_impl, html_names::kLinkTag)){
++        //   fout << "klinktag preload request" << std::endl;
++        //   if(request->DeferOption() == FetchParameters::kNoDefer) fout << "no defer" << std::endl; 
++        //   if(request->DeferOption() == FetchParameters::kLazyLoad) fout << "lazy load" << std::endl; 
++        //   if(request->DeferOption() == FetchParameters::kIdleLoad) fout << "idle load" << std::endl; 
++        // }
+         fout.close();
+         requests.push_back(std::move(request));
+       }
+       // fix : preload_scanner_tester +
+       else{
+-        fout << "kStarttag_10 but not preload" << std::endl;
++        // fout << "kStarttag_10 but not preload" << std::endl;
+         fout.close();
+       }
+       return;
+     }
+     default: { 
+       // fix : preload_scanner_tester +
+-      fout << "default" << std::endl;
++      // fout << "default" << std::endl;
+       fout.close();
+       return; 
+     }
