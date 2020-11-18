@@ -1,0 +1,540 @@
+diff --git a/chrome/browser/chrome_browser_main.cc b/chrome/browser/chrome_browser_main.cc
+index e09c3f5..5c6165c 100644
+--- a/chrome/browser/chrome_browser_main.cc
++++ b/chrome/browser/chrome_browser_main.cc
+@@ -1681,6 +1681,7 @@ bool ChromeBrowserMainParts::MainMessageLoopRun(int* result_code) {
+ 
+   performance_monitor::ProcessMonitor::GetInstance()->StartGatherCycle();
+ 
++  // 본격적 runloop run(messageloopimpl) 작업 수행
+   g_run_loop->Run();
+ 
+   return true;
+diff --git a/content/browser/browser_main.cc b/content/browser/browser_main.cc
+index 65668ab..1bdd7ea 100644
+--- a/content/browser/browser_main.cc
++++ b/content/browser/browser_main.cc
+@@ -9,6 +9,8 @@
+ #include "base/trace_event/trace_event.h"
+ #include "content/browser/browser_main_runner_impl.h"
+ #include "content/common/content_constants_internal.h"
++#include "base/time/time.h"
++#include <iostream>
+ 
+ namespace content {
+ 
+@@ -40,14 +42,26 @@ int BrowserMain(const MainFunctionParams& parameters) {
+   std::unique_ptr<BrowserMainRunnerImpl> main_runner(
+       BrowserMainRunnerImpl::Create());
+ 
++  //초기화 부분
+   int exit_code = main_runner->Initialize(parameters);
+   if (exit_code >= 0)
+     return exit_code;
++  // fix : chromium_Structure_Tester +
++  // std::cout << "=======================" << "base::Time::Now() : " << base::Time::Now() << "============" << std::endl;
++  // std::cout << "==================" << "base::TimeTicks::Now() : " << base::TimeTicks::Now() << "============" << std::endl;
++  // std::cout << "================" << "base::ThreadTicks::Now() : " << base::ThreadTicks::Now() << "============" << std::endl;
+ 
++  //실제 run 관련 impl
+   exit_code = main_runner->Run();
+ 
+   main_runner->Shutdown();
+ 
++  // fix : chromium_Structure_Tester +
++  // std::cout << "=======================" << "base::Time::Now() : " << base::Time::Now() << "============" << std::endl;
++  // std::cout << "==================" << "base::TimeTicks::Now() : " << base::TimeTicks::Now() << "============" << std::endl;
++  // std::cout << "================" << "base::ThreadTicks::Now() : " << base::ThreadTicks::Now() << "============" << std::endl;
++
++
+   return exit_code;
+ }
+ 
+diff --git a/content/browser/browser_main_runner_impl.cc b/content/browser/browser_main_runner_impl.cc
+index 4b59e81..2361d4a 100644
+--- a/content/browser/browser_main_runner_impl.cc
++++ b/content/browser/browser_main_runner_impl.cc
+@@ -147,6 +147,7 @@ void BrowserMainRunnerImpl::SynchronouslyFlushStartupTasks() {
+ int BrowserMainRunnerImpl::Run() {
+   DCHECK(initialization_started_);
+   DCHECK(!is_shutdown_);
++  // 진짜 run 하는 부분
+   main_loop_->RunMainMessageLoopParts();
+   return main_loop_->GetResultCode();
+ }
+diff --git a/content/renderer/pepper/pepper_plugin_registry.cc b/content/renderer/pepper/pepper_plugin_registry.cc
+index 0f87597..cbe03cd 100644
+--- a/content/renderer/pepper/pepper_plugin_registry.cc
++++ b/content/renderer/pepper/pepper_plugin_registry.cc
+@@ -100,7 +100,7 @@ PepperPluginRegistry::~PepperPluginRegistry() {
+   // to erase these modules from the live_modules_ list, and we don't want
+   // that to happen implicitly out-of-order.
+   preloaded_modules_.clear();
+-
++ 
+   DCHECK(live_modules_.empty());
+ }
+ 
+diff --git a/content/renderer/renderer_main.cc b/content/renderer/renderer_main.cc
+index 222cc58..b6712a61 100644
+--- a/content/renderer/renderer_main.cc
++++ b/content/renderer/renderer_main.cc
+@@ -107,6 +107,8 @@ int RendererMain(const MainFunctionParams& parameters) {
+ 
+   const base::CommandLine& command_line = parameters.command_line;
+ 
++
++// chromium_structure_tester : + renderer process initialize part
+ #if defined(OS_MACOSX)
+   base::mac::ScopedNSAutoreleasePool* pool = parameters.autorelease_pool;
+ #endif  // OS_MACOSX
+@@ -185,6 +187,7 @@ int RendererMain(const MainFunctionParams& parameters) {
+     }
+ #endif
+ 
++    // chromium_structure_tester : + run loop part
+     std::unique_ptr<RenderProcess> render_process = RenderProcessImpl::Create();
+     // It's not a memory leak since RenderThread has the same lifetime
+     // as a renderer process.
+diff --git a/ios/third_party/blink/src/html_token.h b/ios/third_party/blink/src/html_token.h
+index 4a5d046..d0622a7 100644
+--- a/ios/third_party/blink/src/html_token.h
++++ b/ios/third_party/blink/src/html_token.h
+@@ -129,6 +129,10 @@ public:
+         m_type = Comment;
+     }
+ 
++    Type Get_m_type(){
++        return m_type;
++    }
++
+ private:
+     Type m_type;
+     std::vector<LChar> m_data;
+diff --git a/ipc/ipc_channel_proxy.h b/ipc/ipc_channel_proxy.h
+index 5b7cb6e..d804bc4 100644
+--- a/ipc/ipc_channel_proxy.h
++++ b/ipc/ipc_channel_proxy.h
+@@ -36,7 +36,7 @@
+ namespace base {
+ class SingleThreadTaskRunner;
+ }
+-
++ 
+ namespace IPC {
+ 
+ class ChannelFactory;
+diff --git a/mojo/public/c/system/thunks.cc b/mojo/public/c/system/thunks.cc
+index 1bf1a26..10c3882 100644
+--- a/mojo/public/c/system/thunks.cc
++++ b/mojo/public/c/system/thunks.cc
+@@ -31,7 +31,7 @@ MojoSystemThunks g_thunks;
+ 
+ MojoResult NotImplemented(const char* name) {
+   if (g_thunks.size > 0) {
+-    DLOG(ERROR) << "Function 'Mojo" << name
++    DLOG(ERROR) << "Funct.ion 'Mojo" << name
+                 << "()' not supported in this version of Mojo Core.";
+     return MOJO_RESULT_UNIMPLEMENTED;
+   }
+@@ -56,7 +56,7 @@ namespace mojo {
+ // referenced as a friend to base::ScopedAllowBlocking when library support is
+ // enabled.
+ class CoreLibraryInitializer {
+- public:
++ public:      
+   CoreLibraryInitializer(const MojoInitializeOptions* options) {
+ #if defined(OS_CHROMEOS) || defined(OS_LINUX) || defined(OS_WIN)
+     bool application_provided_path = false;
+diff --git a/mojo/public/cpp/bindings/shared_remote.h b/mojo/public/cpp/bindings/shared_remote.h
+index 34d3fbe..0bfa844f 100644
+--- a/mojo/public/cpp/bindings/shared_remote.h
++++ b/mojo/public/cpp/bindings/shared_remote.h
+@@ -7,6 +7,10 @@
+ 
+ #include <memory>
+ 
++// +새로 추가한것
++#include <fstream>
++#include <iostream>
++
+ #include "base/bind.h"
+ #include "base/macros.h"
+ #include "base/memory/ptr_util.h"
+@@ -24,6 +28,7 @@
+ #include "mojo/public/cpp/bindings/sync_event_watcher.h"
+ #include "mojo/public/cpp/bindings/thread_safe_interface_ptr.h"
+ 
++
+ namespace mojo {
+ 
+ template <typename Interface>
+@@ -54,6 +59,8 @@ class SharedRemoteBase
+   template <typename Interface>
+   friend class SharedAssociatedRemote;
+ 
++  // +새로 추가한것
++
+   struct RemoteWrapperDeleter;
+ 
+   // Helper class which owns a |RemoteType| instance on an appropriate sequence.
+@@ -134,6 +141,18 @@ class SharedRemoteBase
+     }
+ 
+     void Accept(Message message) {
++
++      // +새로 추가한것
++      // std::ofstream writefile;
++      // writefile.open("/home/jemin/chromium/src/log.txt");
++      // writefile << "\ndata is " << message.payload_buffer()
++      //           << "\nname is " << message.name() 
++      //           << "\ninterface_id is " << message.interface_id()
++      //           << "\nrequest_id " << message.request_id()
++      //           << "\n real data is " << message.payload_buffer()->data() 
++      //           << "======================================================" << std::endl;
++      // writefile.close();
++      
+       remote_.internal_state()->ForwardMessage(std::move(message));
+     }
+ 
+diff --git a/third_party/blink/renderer/core/dom/decoded_data_document_parser.cc b/third_party/blink/renderer/core/dom/decoded_data_document_parser.cc
+index 3dcebd4..508830b 100644
+--- a/third_party/blink/renderer/core/dom/decoded_data_document_parser.cc
++++ b/third_party/blink/renderer/core/dom/decoded_data_document_parser.cc
+@@ -25,6 +25,9 @@
+ 
+ #include "third_party/blink/renderer/core/dom/decoded_data_document_parser.h"
+ 
++// +
++#include <iostream>
++
+ #include <memory>
+ #include "third_party/blink/renderer/core/dom/document.h"
+ #include "third_party/blink/renderer/core/dom/document_encoding_data.h"
+@@ -67,6 +70,10 @@ void DecodedDataDocumentParser::AppendBytes(const char* data, size_t length) {
+     return;
+ 
+   String decoded = decoder_->Decode(data, length);
++
++  // +
++  // std::cout << "decoded : " << decoded << std::endl;
++
+   UpdateDocument(decoded);
+ }
+ 
+diff --git a/third_party/blink/renderer/core/html/parser/background_html_parser.cc b/third_party/blink/renderer/core/html/parser/background_html_parser.cc
+index 6bc906f..fd5441f 100644
+--- a/third_party/blink/renderer/core/html/parser/background_html_parser.cc
++++ b/third_party/blink/renderer/core/html/parser/background_html_parser.cc
+@@ -28,6 +28,9 @@
+ #include <memory>
+ #include <utility>
+ 
++// +
++#include <iostream>
++
+ #include "base/single_thread_task_runner.h"
+ #include "third_party/blink/public/platform/platform.h"
+ #include "third_party/blink/renderer/core/html/parser/html_document_parser.h"
+@@ -185,7 +188,26 @@ void BackgroundHTMLParser::MarkEndOfFile() {
+   input_.Close();
+ }
+ 
++// +
++void BackgroundHTMLParser::num_reset(){
++  token_num = 0;
++  preload_num = 0;
++}
++
++void BackgroundHTMLParser::print_num(){
++  if(total_token_num + token_num == total_token_num){}
++  else std::cout << "total token num : " << total_token_num << std::endl;
++
++  if(total_preload_num + preload_num == total_preload_num){}
++  else std::cout << "total preload num : " << total_preload_num << std::endl;
++  
++}
++
+ void BackgroundHTMLParser::PumpTokenizer() {
++
++  // +
++  num_reset();
++
+   TRACE_EVENT0("loading", "BackgroundHTMLParser::pumpTokenizer");
+   HTMLTreeBuilderSimulator::SimulatedToken simulated_token =
+       HTMLTreeBuilderSimulator::kOtherToken;
+@@ -204,6 +226,40 @@ void BackgroundHTMLParser::PumpTokenizer() {
+       preload_scanner_->Scan(token, input_.Current(), pending_preloads_,
+                              &viewport_description_, &is_csp_meta_tag);
+ 
++      // +
++
++      // about token
++      // fix : chromium_structure_tester + 
++      if(token.Attributes().IsEmpty()){}
++      else{
++        //std::cout << "================================================================" << std::endl;
++        for(unsigned i=0; i<token.Attributes().size(); i++){
++          // std::cout << "token data is " << token.Get_type() << std::endl;
++          // std::cout << "token name is "  << token.Attributes()[i].GetName() << std::endl;
++          // std::cout << "token value is "  << token.Attributes()[i].Value() << std::endl; 
++          if(token.Get_type()=="link"&& token.Attributes()[i].GetName()=="href")    
++            token_num++;
++          if(token.Get_type()=="script"&& token.Attributes()[i].GetName()=="src")    
++            token_num++;
++        }  
++      }
++      about input
++      std::cout << "value name is "  << input_<< std::endl;
++
++      // about pending preload 
++      // charset은 null로 나옴 / inner_url은 있는것도 있고 없는것도 있음
++      if(pending_preloads_.IsEmpty()){}
++      else{
++        for(unsigned i=0; i< pending_preloads_.size(); i++){
++          //std::cout << "pending preload[" << i << "] Resource URL: " << pending_preloads_[i]->ResourceURL() << std::endl;        
++          //std::cout << "pending preload[" << i << "] Base URL string : " << pending_preloads_[i]->BaseURL().GetString() << std::endl;
++          preload_num++;
++          // std::cout << "pending preload[" << i << "] Base URL inner_url : " << pending_preloads_[i]->BaseURL().InnerURL()->GetString() << std::endl;
++        }
++      }
++      
++      // + end
++
+       simulated_token =
+           tree_builder_simulator_.Simulate(token, tokenizer_.get());
+ 
+@@ -237,6 +293,13 @@ void BackgroundHTMLParser::PumpTokenizer() {
+     }
+   }
+ 
++  // fix : + chromium_structure_tester
++  total_preload_num = total_preload_num + preload_num;
++  total_token_num = total_token_num + token_num;
++  std::cout << "preloadrequeststream count : " << pending_preloads_.size() << std::endl;
++  print_num();
++  num_reset();
++
+   EnqueueTokenizedChunk();
+ }
+ 
+diff --git a/third_party/blink/renderer/core/html/parser/background_html_parser.h b/third_party/blink/renderer/core/html/parser/background_html_parser.h
+index de2b5d9..5606dff 100644
+--- a/third_party/blink/renderer/core/html/parser/background_html_parser.h
++++ b/third_party/blink/renderer/core/html/parser/background_html_parser.h
+@@ -95,6 +95,10 @@ class BackgroundHTMLParser {
+ 
+   void ClearParser();
+ 
++  // +
++  void num_reset();
++  void print_num();
++
+  private:
+   BackgroundHTMLParser(std::unique_ptr<Configuration>,
+                        scoped_refptr<base::SingleThreadTaskRunner>);
+@@ -127,6 +131,10 @@ class BackgroundHTMLParser {
+   // |TokenizedChunk::kNoPendingToken| if none have been found.
+   int pending_csp_meta_token_index_;
+ 
++  // + add
++  int token_num = 0, preload_num = 0;
++  int total_token_num = 0, total_preload_num = 0;
++
+   bool starting_script_;
+ 
+   base::WeakPtrFactory<BackgroundHTMLParser> weak_factory_{this};
+diff --git a/third_party/blink/renderer/core/html/parser/compact_html_token.h b/third_party/blink/renderer/core/html/parser/compact_html_token.h
+index c24072f..0b205eb 100644
+--- a/third_party/blink/renderer/core/html/parser/compact_html_token.h
++++ b/third_party/blink/renderer/core/html/parser/compact_html_token.h
+@@ -26,6 +26,9 @@
+ #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_HTML_PARSER_COMPACT_HTML_TOKEN_H_
+ #define THIRD_PARTY_BLINK_RENDERER_CORE_HTML_PARSER_COMPACT_HTML_TOKEN_H_
+ 
++//+
++#include <iostream>
++
+ #include "third_party/blink/renderer/core/html/parser/html_token.h"
+ #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
+ #include "third_party/blink/renderer/platform/wtf/text/text_position.h"
+@@ -60,6 +63,21 @@ class CORE_EXPORT CompactHTMLToken {
+ 
+   CompactHTMLToken(const HTMLToken*, const TextPosition&);
+ 
++  // +
++  const String& Get_type() const { 
++    return data_; 
++  }
++  const String& Get_data() const {
++    return data_; 
++  }
++  const Vector<Attribute>& Get_attribute() const {
++    return attributes_;
++  }
++  bool isHTML() const { return false; }
++  
++
++
++
+   HTMLToken::TokenType GetType() const {
+     return static_cast<HTMLToken::TokenType>(type_);
+   }
+diff --git a/third_party/blink/renderer/core/html/parser/html_document_parser.cc b/third_party/blink/renderer/core/html/parser/html_document_parser.cc
+index eb81ef3..32fd898 100644
+--- a/third_party/blink/renderer/core/html/parser/html_document_parser.cc
++++ b/third_party/blink/renderer/core/html/parser/html_document_parser.cc
+@@ -27,6 +27,11 @@
+ 
+ #include <memory>
+ #include <utility>
++ 
++// +
++#include <iostream>
++#include <fstream>
++
+ 
+ #include "base/auto_reset.h"
+ #include "base/numerics/safe_conversions.h"
+@@ -699,8 +704,12 @@ void HTMLDocumentParser::PumpTokenizer() {
+       RUNTIME_CALL_TIMER_SCOPE(
+           V8PerIsolateData::MainThreadIsolate(),
+           RuntimeCallStats::CounterId::kHTMLTokenizerNextToken);
+-      if (!tokenizer_->NextToken(input_.Current(), Token()))
++
++      // + 아직 정확히는 뭔지 모르겠음
++      
++      if (!tokenizer_->NextToken(input_.Current(), Token())){
+         break;
++      }
+     }
+     ConstructTreeFromHTMLToken();
+     DCHECK(IsStopped() || Token().IsUninitialized());
+@@ -860,6 +869,9 @@ void HTMLDocumentParser::StopBackgroundParser() {
+ }
+ 
+ void HTMLDocumentParser::Append(const String& input_source) {
++
++  // +
++
+   if (IsStopped())
+     return;
+ 
+@@ -1168,6 +1180,13 @@ void HTMLDocumentParser::ParseDocumentFragment(
+ }
+ 
+ void HTMLDocumentParser::AppendBytes(const char* data, size_t length) {
++
++  // fix : + chromium_structure_tester
++  std::cout << "append bytes" << std::endl;
++  for(int i=0; i<1000; i++){
++    std::cout << data[i];
++  }
++  
+   if (!length || IsStopped())
+     return;
+ 
+@@ -1188,6 +1207,8 @@ void HTMLDocumentParser::AppendBytes(const char* data, size_t length) {
+     return;
+   }
+ 
++
++
+   DecodedDataDocumentParser::AppendBytes(data, length);
+ }
+ 
+diff --git a/third_party/blink/renderer/core/html/parser/html_token.h b/third_party/blink/renderer/core/html/parser/html_token.h
+index 49fa9fb..29161b9 100644
+--- a/third_party/blink/renderer/core/html/parser/html_token.h
++++ b/third_party/blink/renderer/core/html/parser/html_token.h
+@@ -29,6 +29,9 @@
+ #include <memory>
+ #include <utility>
+ 
++// +
++#include <iostream>
++
+ #include "base/macros.h"
+ #include "third_party/blink/renderer/core/dom/attribute.h"
+ #include "third_party/blink/renderer/core/html/parser/html_parser_idioms.h"
+@@ -427,7 +430,25 @@ class HTMLToken {
+     or_all_data_ |= character;
+   }
+ 
++  // +
++  const TokenType& Get_type() const {
++    return type_; 
++  }
++  const UChar& Get_uchar() const {
++    return or_all_data_; 
++  }
++  const UChar& Get_data() const { 
++    return data_[0]; 
++  }
++  const AttributeList& Get_attribute() const {
++    return attributes_;
++  }
++  bool isHTML() const { return true; }
++
++
+  private:
++  String name_;
++  String value_;
+   TokenType type_;
+   Attribute::Range range_;  // Always starts at zero.
+   int base_offset_;
+diff --git a/third_party/blink/renderer/platform/text/segmented_string.h b/third_party/blink/renderer/platform/text/segmented_string.h
+index 42d1dc6..f01876b 100644
+--- a/third_party/blink/renderer/platform/text/segmented_string.h
++++ b/third_party/blink/renderer/platform/text/segmented_string.h
+@@ -122,6 +122,11 @@ class PLATFORM_EXPORT SegmentedSubstring {
+ 
+   ALWAYS_INLINE int length() const { return length_; }
+ 
++  // +
++  String get_string() const {
++    return string_;
++  }
++
+  private:
+   union {
+     const LChar* string8_ptr;
+@@ -266,6 +271,11 @@ class PLATFORM_EXPORT SegmentedString {
+     return current_string_.GetCurrentChar();
+   }
+ 
++  // +
++  SegmentedSubstring get_current_char() const {
++    return current_string_;
++  }
++
+   // The method is moderately slow, comparing to currentLine method.
+   OrdinalNumber CurrentColumn() const;
+   OrdinalNumber CurrentLine() const;
+diff --git a/third_party/blink/renderer/platform/weborigin/kurl.h b/third_party/blink/renderer/platform/weborigin/kurl.h
+index 8ddb31a..d1bb35a 100644
+--- a/third_party/blink/renderer/platform/weborigin/kurl.h
++++ b/third_party/blink/renderer/platform/weborigin/kurl.h
+@@ -231,6 +231,9 @@ class PLATFORM_EXPORT KURL {
+     return parsed_.potentially_dangling_markup;
+   }
+ 
++  //+ 
++  
++
+   // Returns a GURL with the same properties. This can be used in platform/ and
+   // web/. However, in core/ and modules/, this should only be used to pass
+   // a GURL to a layer that is expecting one instead of a KURL or a WebURL.
+diff --git a/weblayer/browser/navigation_controller_impl.cc b/weblayer/browser/navigation_controller_impl.cc
+index 62f3911..a33db5f 100644
+--- a/weblayer/browser/navigation_controller_impl.cc
++++ b/weblayer/browser/navigation_controller_impl.cc
+@@ -228,7 +228,7 @@ void NavigationControllerImpl::DidFinishNavigation(
+       observer.NavigationCompleted(navigation);
+   } else {
+ #if defined(OS_ANDROID)
+-    if (java_controller_) {
++    if (java_controller_) {4
+       TRACE_EVENT0("weblayer",
+                    "Java_NavigationControllerImpl_navigationFailed");
+       Java_NavigationControllerImpl_navigationFailed(
