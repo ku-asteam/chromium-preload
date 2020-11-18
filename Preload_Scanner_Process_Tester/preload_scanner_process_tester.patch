@@ -1,0 +1,712 @@
+diff --git a/third_party/blink/renderer/core/html/parser/html_preload_scanner.cc b/third_party/blink/renderer/core/html/parser/html_preload_scanner.cc
+index 0286683..e5b2ae7 100644
+--- a/third_party/blink/renderer/core/html/parser/html_preload_scanner.cc
++++ b/third_party/blink/renderer/core/html/parser/html_preload_scanner.cc
+@@ -27,7 +27,11 @@
+ 
+ #include "third_party/blink/renderer/core/html/parser/html_preload_scanner.h"
+ 
++// +
++#include <fstream>
++
+ #include <memory>
++#include <iostream>
+ #include "base/optional.h"
+ #include "third_party/blink/public/mojom/fetch/fetch_api_request.mojom-blink.h"
+ #include "third_party/blink/public/mojom/script/script_type.mojom-blink.h"
+@@ -65,6 +69,7 @@
+ #include "third_party/blink/renderer/platform/network/mime/content_type.h"
+ #include "third_party/blink/renderer/platform/network/mime/mime_type_registry.h"
+ 
++
+ namespace blink {
+ 
+ static bool Match(const StringImpl* impl, const QualifiedName& q_name) {
+@@ -177,11 +182,21 @@ class TokenPreloadScanner::StartTagScanner {
+ 
+   void ProcessAttributes(const HTMLToken::AttributeList& attributes) {
+     DCHECK(IsMainThread());
++
++    // fix : preload_scanner_tester +
++    std::ofstream fout("/home/jemin/chromium/src/token.out", std::ios::app);
++
+     if (!tag_impl_)
+       return;
+     for (const HTMLToken::Attribute& html_token_attribute : attributes) {
+       AtomicString attribute_name(html_token_attribute.GetName());
+       String attribute_value = html_token_attribute.Value8BitIfNecessary();
++
++      // fix : preload_scanner_tester +  
++      fout << "Atribute name : " << attribute_name << std::endl;
++      fout << "Attribute value" << attribute_value << std::endl;
++      fout.close();
++
+       ProcessAttribute(attribute_name, attribute_value);
+     }
+     PostProcessAfterAttributes();
+@@ -189,18 +204,35 @@ class TokenPreloadScanner::StartTagScanner {
+ 
+   void ProcessAttributes(
+       const Vector<CompactHTMLToken::Attribute>& attributes) {
++
++    // fix : preload_scanner_tester + 
++    std::ofstream fout("/home/jemin/chromium/src/token.out", std::ios::app);
++
+     if (!tag_impl_)
+       return;
+-    for (const CompactHTMLToken::Attribute& html_token_attribute : attributes)
++    for (const CompactHTMLToken::Attribute& html_token_attribute : attributes){
++      
++      // fix : preload_scanner_tester + 
++      fout << "Atribute name : " << html_token_attribute.GetName() << std::endl;
++      fout << "Attribute value" << html_token_attribute.Value() << std::endl;
++      fout.close();
++      
+       ProcessAttribute(html_token_attribute.GetName(),
+                        html_token_attribute.Value());
++    }
++    // + image url과 관련된 후처리로 보이므로 안건드려도 될듯
+     PostProcessAfterAttributes();
+   }
+ 
+   void PostProcessAfterAttributes() {
++    // fix : preload_scanner_tester + 
++    std::ofstream fout("/home/jemin/chromium/src/token.out", std::ios::app);
+     if (Match(tag_impl_, html_names::kImgTag) ||
+-        (link_is_preload_ && as_attribute_value_ == "image"))
++        (link_is_preload_ && as_attribute_value_ == "image")){
++      // fix : preload_scanner_tester +    
++      fout << "postprocess after attributes" << std::endl;
+       SetUrlFromImageAttributes();
++    }
+   }
+ 
+   void HandlePictureSourceURL(PictureData& picture_data) {
+@@ -228,22 +260,39 @@ class TokenPreloadScanner::StartTagScanner {
+       const ClientHintsPreferences& client_hints_preferences,
+       const PictureData& picture_data,
+       const CachedDocumentParameters& document_parameters) {
++
++    // fix : preload_scanner_tester +
++    std::ofstream fout("/home/jemin/chromium/src/token.out", std::ios::app);
++
+     PreloadRequest::RequestType request_type =
+         PreloadRequest::kRequestTypePreload;
+     base::Optional<ResourceType> type;
+     if (ShouldPreconnect()) {
++      // fix : preload_scanner_tester +
++      fout << "Should Preconnect" << std::endl;
+       request_type = PreloadRequest::kRequestTypePreconnect;
+     } else {
+       if (IsLinkRelPreload()) {
++        // fix : preload_scanner_tester +
++        fout << "IslinkRelPreload" << std::endl;
+         request_type = PreloadRequest::kRequestTypeLinkRelPreload;
+         type = ResourceTypeForLinkPreload();
+-        if (type == base::nullopt)
++        if (type == base::nullopt){
++          // fix : preload_scanner_tester +
++          fout << "Type null" << std::endl;
++          fout.close();
+           return nullptr;
++        }
+       } else if (IsLinkRelModulePreload()) {
++        // fix : preload_scanner_tester +
++        fout << "IsLinkRelModulePreload" << std::endl;
+         request_type = PreloadRequest::kRequestTypeLinkRelPreload;
+         type = ResourceType::kScript;
+       }
+       if (!ShouldPreload(type)) {
++        // fix : preload_scanner_tester +
++        fout << "Should not Preload" << std::endl;
++        fout.close();
+         return nullptr;
+       }
+     }
+@@ -280,12 +329,21 @@ class TokenPreloadScanner::StartTagScanner {
+         InitiatorFor(tag_impl_), position, url_to_load_, predicted_base_url,
+         type.value(), referrer_policy, PreloadRequest::kDocumentIsReferrer,
+         is_image_set, resource_width, client_hints_preferences, request_type);
+-    if (!request)
++    if (!request){
++      // fix : preload_scanner_tester +
++      fout << "request create failed" << std::endl;
++      fout.close();
+       return nullptr;
++    }else{
++      // fix : preload_scanner_tester +
++      fout << "request created" << std::endl;
++    }
+ 
+     if ((Match(tag_impl_, html_names::kScriptTag) &&
+          type_attribute_value_ == "module") ||
+         IsLinkRelModulePreload()) {
++      // fix : preload_scanner_tester +
++      fout << "kscripttag and module request" << std::endl;
+       request->SetScriptType(mojom::ScriptType::kModule);
+     }
+ 
+@@ -293,16 +351,26 @@ class TokenPreloadScanner::StartTagScanner {
+     request->SetImportance(importance_);
+     request->SetNonce(nonce_);
+     request->SetCharset(Charset());
+-    request->SetDefer(defer_);
+ 
++    // fix : script priority change
++    // if ((Match(tag_impl_, html_names::kScriptTag))){
++    //   request->SetDefer(FetchParameters::kNoDefer);
++    // }else{
++      request->SetDefer(defer_);
++    // }
++    
+     LoadingAttrValue effective_loading_attr_value = loading_attr_value_;
+     // If the 'lazyload' feature policy is enforced, the attribute value
+     // loading='eager' is considered as 'auto'.
+     if (effective_loading_attr_value == LoadingAttrValue::kEager &&
+         document_parameters.lazyload_policy_enforced) {
++      // fix : preload_scanner_tester +
++      fout << "eager and lazyload policy" << std::endl;
+       effective_loading_attr_value = LoadingAttrValue::kAuto;
+     }
+     if (type == ResourceType::kImage) {
++      // fix : preload_scanner_tester +
++      fout << "kimage type preload" << std::endl;
+       bool is_lazy_load_image_enabled = false;
+       switch (effective_loading_attr_value) {
+         case LoadingAttrValue::kEager:
+@@ -336,9 +404,13 @@ class TokenPreloadScanner::StartTagScanner {
+ 
+     request->SetIntegrityMetadata(integrity_metadata_);
+ 
+-    if (scanner_type_ == ScannerType::kInsertion)
++    if (scanner_type_ == ScannerType::kInsertion){
++      // fix : preload_scanner_tester +
++      fout << "kinsertion preload" << std::endl;
+       request->SetFromInsertionScanner(true);
+-
++    }
++    // fix : preload_scanner_tester +
++    fout.close();
+     return request;
+   }
+ 
+@@ -348,36 +420,80 @@ class TokenPreloadScanner::StartTagScanner {
+   template <typename NameType>
+   void ProcessScriptAttribute(const NameType& attribute_name,
+                               const String& attribute_value) {
++
++    // fix : + for checking
++    std::ofstream fout("/home/jemin/chromium/src/token.out", std::ios::app);
++
+     // FIXME - Don't set crossorigin multiple times.
+     if (Match(attribute_name, html_names::kSrcAttr)) {
++      // fix : + 
++      fout << "kSrcAttr process" << std::endl;
++      fout.close();
+       SetUrlToLoad(attribute_value, kDisallowURLReplacement);
++
+     } else if (Match(attribute_name, html_names::kCrossoriginAttr)) {
++      // fix : +
++      fout << "kCrossoriginAttr process" << std::endl;
++      fout.close();
+       SetCrossOrigin(attribute_value);
+     } else if (Match(attribute_name, html_names::kNonceAttr)) {
++      // fix : +
++      fout << "KNonceAttr process" << std::endl;
++      fout.close();
+       SetNonce(attribute_value);
+-    } else if (Match(attribute_name, html_names::kAsyncAttr)) {
++    } 
++    // async attribute
++    else if (Match(attribute_name, html_names::kAsyncAttr)) {
++      // fix : +
++      fout << "kAsyncAttr process" << std::endl;
++      fout.close();
+       SetDefer(FetchParameters::kLazyLoad);
+-    } else if (Match(attribute_name, html_names::kDeferAttr)) {
++    } 
++    // defer attribute
++    else if (Match(attribute_name, html_names::kDeferAttr)) {
++      // fix : +
++      fout << "kDeferAttr process" << std::endl;
++      fout.close();
+       SetDefer(FetchParameters::kLazyLoad);
+     } else if (!integrity_attr_set_ &&
+                Match(attribute_name, html_names::kIntegrityAttr)) {
++      // fix : +
++      fout << "kIntegrityAttr process" << std::endl;
++      fout.close();
+       integrity_attr_set_ = true;
+       SubresourceIntegrity::ParseIntegrityAttribute(
+           attribute_value, integrity_features_, integrity_metadata_);
+-    } else if (Match(attribute_name, html_names::kTypeAttr)) {
++    } 
++    // + name이 type인 애들 처리, 보통 value로는 text/javascript 이런식
++    else if (Match(attribute_name, html_names::kTypeAttr)) {
++      // fix : +
++      fout << "kTypeAttr process" << std::endl;
++      fout.close();
+       type_attribute_value_ = attribute_value;
+     } else if (Match(attribute_name, html_names::kLanguageAttr)) {
++      // fix : +
++      fout << "kLanguageAttr process" << std::endl;
++      fout.close();
+       language_attribute_value_ = attribute_value;
+     } else if (Match(attribute_name, html_names::kNomoduleAttr)) {
++      // fix : +
++      fout << "kModuleAttr process" << std::endl;
++      fout.close();
+       nomodule_attribute_value_ = true;
+     } else if (!referrer_policy_set_ &&
+                Match(attribute_name, html_names::kReferrerpolicyAttr) &&
+                !attribute_value.IsNull()) {
++      // fix : +
++      fout << "kReferrerpolicyAttr process" << std::endl;
++      fout.close();
+       SetReferrerPolicy(attribute_value,
+                         kDoNotSupportReferrerPolicyLegacyKeywords);
+     } else if (!importance_mode_set_ &&
+                Match(attribute_name, html_names::kImportanceAttr) &&
+                priority_hints_origin_trial_enabled_) {
++      // fix : +
++      fout << "kImportanceAttr process" << std::endl;
++      fout.close();
+       SetImportance(attribute_value);
+     }
+   }
+@@ -451,12 +567,23 @@ class TokenPreloadScanner::StartTagScanner {
+   template <typename NameType>
+   void ProcessLinkAttribute(const NameType& attribute_name,
+                             const String& attribute_value) {
++
++    // fix : preload_scanner_tester +
++    std::ofstream fout("/home/jemin/chromium/src/token.out", std::ios::app);
++    
+     // FIXME - Don't set rel/media/crossorigin multiple times.
+     if (Match(attribute_name, html_names::kHrefAttr)) {
++      // fix : preload_scanner_tester + 
++      fout << "kHerefAttr" << std::endl;
++      fout.close();
++      
+       SetUrlToLoad(attribute_value, kDisallowURLReplacement);
+       // Used in SetUrlFromImageAttributes() when as=image.
+       img_src_url_ = attribute_value;
+     } else if (Match(attribute_name, html_names::kRelAttr)) {
++      // fix : preload_scanner_tester +
++      fout << "kRelAttr" << std::endl;
++      fout.close();
+       LinkRelAttribute rel(attribute_value);
+       link_is_style_sheet_ =
+           rel.IsStyleSheet() && !rel.IsAlternate() &&
+@@ -467,35 +594,69 @@ class TokenPreloadScanner::StartTagScanner {
+       link_is_modulepreload_ = rel.IsModulePreload();
+       link_is_import_ = rel.IsImport();
+     } else if (Match(attribute_name, html_names::kMediaAttr)) {
++      // fix :preload_scanner_tester + 
++      fout << "kMediaAttr" << std::endl;
++      fout.close();
+       matched_ &= MediaAttributeMatches(*media_values_, attribute_value);
+     } else if (Match(attribute_name, html_names::kCrossoriginAttr)) {
++      // fix : preload_scanner_tester + 
++      fout << "kCrossoriginAttr" << std::endl;
++      fout.close();
+       SetCrossOrigin(attribute_value);
+     } else if (Match(attribute_name, html_names::kNonceAttr)) {
++      // fix : preload_scanner_tester + 
++      fout << "kNonceAttr" << std::endl;
++      fout.close();
+       SetNonce(attribute_value);
+     } else if (Match(attribute_name, html_names::kAsAttr)) {
++      // fix : preload_scanner_tester + 
++      fout << "kAsAttr" << std::endl;
++      fout.close();
+       as_attribute_value_ = attribute_value.DeprecatedLower();
+     } else if (Match(attribute_name, html_names::kTypeAttr)) {
++      // fix : preload_scanner_tester + 
++      fout << "kTypeAttr" << std::endl;
++      fout.close();
+       type_attribute_value_ = attribute_value;
+     } else if (!referrer_policy_set_ &&
+                Match(attribute_name, html_names::kReferrerpolicyAttr) &&
+                !attribute_value.IsNull()) {
++      // fix : preload_scanner_tester +
++      fout << "kReferrerpolicyAttr" << std::endl;
++      fout.close();
+       SetReferrerPolicy(attribute_value,
+                         kDoNotSupportReferrerPolicyLegacyKeywords);
+     } else if (!integrity_attr_set_ &&
+                Match(attribute_name, html_names::kIntegrityAttr)) {
++      // fix : preload_scanner_tester + 
++      fout << "kIntegrityAttr" << std::endl;
++      fout.close();
+       integrity_attr_set_ = true;
+       SubresourceIntegrity::ParseIntegrityAttribute(
+           attribute_value, integrity_features_, integrity_metadata_);
+     } else if (Match(attribute_name, html_names::kImagesrcsetAttr) &&
+                srcset_attribute_value_.IsNull()) {
++      // fix : preload_scanner_tester +
++      fout << "lImagesrcsetAttr, srcset_attribute_value" << std::endl;
++      fout.close();
+       srcset_attribute_value_ = attribute_value;
+     } else if (Match(attribute_name, html_names::kImagesizesAttr) &&
+                !source_size_set_) {
++      // fix : preload_scanner_tester + 
++      fout << "kImagesizesAttr" << std::endl;
++      fout.close();
+       ParseSourceSize(attribute_value);
+     } else if (!importance_mode_set_ &&
+                Match(attribute_name, html_names::kImportanceAttr) &&
+                priority_hints_origin_trial_enabled_) {
++      // fix : preload_scanner_tester +
++      fout << "kImportanceAttr, priority_hints_origin_trial_enabled_" << std::endl;
++      fout.close();
+       SetImportance(attribute_value);
++    }else{
++      // fix  : preload_scanner_tester + 
++      fout << "klinkprocess non condition" << std::endl;
++      fout.close();
+     }
+   }
+ 
+@@ -548,21 +709,51 @@ class TokenPreloadScanner::StartTagScanner {
+   template <typename NameType>
+   void ProcessAttribute(const NameType& attribute_name,
+                         const String& attribute_value) {
+-    if (Match(attribute_name, html_names::kCharsetAttr))
+-      charset_ = attribute_value;
+ 
+-    if (Match(tag_impl_, html_names::kScriptTag))
++    // +
++    std::ofstream fout("/home/jemin/chromium/src/token.out", std::ios::app);
++
++    if (Match(attribute_name, html_names::kCharsetAttr)){
++      // fix  : preload_scanner_tester + 
++      fout << "kcharsetattr tag process" << std::endl;
++      fout.close();
++      charset_ = attribute_value;
++    }
++    if (Match(tag_impl_, html_names::kScriptTag)){
++      // fix  : preload_scanner_tester + 
++      fout << "script tag process" << std::endl;
++      fout.close();
+       ProcessScriptAttribute(attribute_name, attribute_value);
+-    else if (Match(tag_impl_, html_names::kImgTag))
++    }else if (Match(tag_impl_, html_names::kImgTag)){
++      // fix  : preload_scanner_tester + 
++      fout << "kimg tag process" << std::endl;
++      fout.close();
+       ProcessImgAttribute(attribute_name, attribute_value);
+-    else if (Match(tag_impl_, html_names::kLinkTag))
++    }
++    else if (Match(tag_impl_, html_names::kLinkTag)){
++      // fix  : preload_scanner_tester + 
++      fout << "link tag process" << std::endl;
++      fout.close();
+       ProcessLinkAttribute(attribute_name, attribute_value);
+-    else if (Match(tag_impl_, html_names::kInputTag))
++    }
++    else if (Match(tag_impl_, html_names::kInputTag)){
++      // fix  : preload_scanner_tester + 
++      fout << "kinput tag process" << std::endl;
++      fout.close();
+       ProcessInputAttribute(attribute_name, attribute_value);
+-    else if (Match(tag_impl_, html_names::kSourceTag))
++    }
++    else if (Match(tag_impl_, html_names::kSourceTag)){
++      // fix  : preload_scanner_tester + 
++      fout << "source tag process" << std::endl;
++      fout.close();
+       ProcessSourceAttribute(attribute_name, attribute_value);
+-    else if (Match(tag_impl_, html_names::kVideoTag))
++    }
++    else if (Match(tag_impl_, html_names::kVideoTag)){
++      // fix  : preload_scanner_tester + 
++      fout << "kvideo tag process" << std::endl;
++      fout.close();
+       ProcessVideoAttribute(attribute_name, attribute_value);
++    }
+   }
+ 
+   void SetUrlToLoad(const String& value, URLReplacement replacement) {
+@@ -617,6 +808,12 @@ class TokenPreloadScanner::StartTagScanner {
+            !url_to_load_.IsEmpty();
+   }
+ 
++  // +
++  bool IsForcedPreload() const {
++    return Match(tag_impl_, html_names::kScriptTag) && link_is_preload_ &&
++           !url_to_load_.IsEmpty();
++  }
++
+   bool IsLinkRelModulePreload() const {
+     return Match(tag_impl_, html_names::kLinkTag) && link_is_modulepreload_ &&
+            !url_to_load_.IsEmpty();
+@@ -886,15 +1083,33 @@ void TokenPreloadScanner::ScanCommon(
+     PreloadRequestStream& requests,
+     base::Optional<ViewportDescription>* viewport,
+     bool* is_csp_meta_tag) {
+-  if (!document_parameters_->do_html_preload_scanning)
+-    return;
+ 
++  // fix : preload_scanner_tester +
++  std::ofstream fout("/home/jemin/chromium/src/token.out", std::ios::app);
++  fout << "==================================================" << std::endl;
++  fout << "Token data : " << token.Get_data() << std::endl;
++  for(int i=0; i<int(token.Get_attribute().size()); i++){
++    fout << "Token attribute[" << i <<"] name : " << token.Get_attribute()[i].GetName() << std::endl;
++    fout << "Token attribute[" << i <<"] value : " << token.Get_attribute()[i].Value() << std::endl;
++  } 
++  // fix : preload_scanner_tester end
++
++  if (!document_parameters_->do_html_preload_scanning){
++    return;
++  }
+   switch (token.GetType()) {
+     case HTMLToken::kCharacter: {
+       if (in_style_) {
+         css_scanner_.Scan(token.Data(), source, requests,
+                           predicted_base_element_url_);
++        // fix : preload_scanner_tester +
++        fout << "kCharacter_instyle" << std::endl;
+       }
++      // fix : preload_scanner_tester +
++      else{
++        fout << "kCharacter_normal" << std::endl;
++      }
++      fout.close();
+       return;
+     }
+     case HTMLToken::kEndTag: {
+@@ -902,49 +1117,95 @@ void TokenPreloadScanner::ScanCommon(
+       if (Match(tag_impl, html_names::kTemplateTag)) {
+         if (template_count_)
+           --template_count_;
++        // fix : preload_scanner_tester +
++        fout << "kEndtag_1" << std::endl;
++        fout.close();
+         return;
+       }
+       if (Match(tag_impl, html_names::kStyleTag)) {
+         if (in_style_)
+           css_scanner_.Reset();
+         in_style_ = false;
++        // fix : preload_scanner_tester +
++        fout << "kEndtag_2" << std::endl;
++        fout.close();
+         return;
+       }
+       if (Match(tag_impl, html_names::kScriptTag)) {
+         in_script_ = false;
++        // fix : preload_scanner_tester +
++        fout << "kEndtag_3" << std::endl;
++        fout.close();
+         return;
+       }
+       if (Match(tag_impl, html_names::kPictureTag)) {
+         in_picture_ = false;
+         picture_data_.picked = false;
++        // fix : preload_scanner_tester +
++        fout << "kEndtag_4" << std::endl;
++        fout.close();
++      }
++      // +
++      else{
++        // fix : preload_scanner_tester +
++        fout << "kEndtag_nothing" << std::endl;
++        fout.close();
+       }
+       return;
+     }
+     case HTMLToken::kStartTag: {
+-      if (template_count_)
++      if (template_count_){
++        // fix : preload_scanner_tester +
++        fout << "kStarttag_1" << std::endl;
++        fout.close();
+         return;
++      }
++      // token의 tag
+       const StringImpl* tag_impl = TagImplFor(token.Data());
+       if (Match(tag_impl, html_names::kTemplateTag)) {
+         ++template_count_;
++        // fix : preload_scanner_tester +
++        fout << "kStarttag_2" << std::endl;
++        fout.close();
+         return;
+       }
+       if (Match(tag_impl, html_names::kStyleTag)) {
+         in_style_ = true;
++        // fix : preload_scanner_tester +
++        fout << "kStarttag_3" << std::endl;
++        fout.close();
+         return;
+       }
+       // Don't early return, because the StartTagScanner needs to look at these
+       // too.
+       if (Match(tag_impl, html_names::kScriptTag)) {
++        // fix : preload_scanner_tester +
++        fout << "kStarttag_4" << std::endl;
+         in_script_ = true;
+       }
+       if (Match(tag_impl, html_names::kBaseTag)) {
+         // The first <base> element is the one that wins.
+-        if (!predicted_base_element_url_.IsEmpty())
++        if (!predicted_base_element_url_.IsEmpty()){
++          // fix : preload_scanner_tester +
++          fout << "kStarttag_5" << std::endl;
++          fout.close();
+           return;
++        }
+         UpdatePredictedBaseURL(token);
+-        return;
++        // fix : preload_scanner_tester +
++        fout << "kStarttag_6" << std::endl;
++        fout.close();
++        return; 
+       }
+       if (Match(tag_impl, html_names::kMetaTag)) {
++
++      // fix : + chromium_structure_tester
++      std::cout << "Token data : " << token.Get_data() << std::endl;
++      for(int i=0; i<int(token.Get_attribute().size()); i++){
++        std::cout << "Token attribute[" << i <<"] name : " << token.Get_attribute()[i].GetName() << std::endl;
++        std::cout << "Token attribute[" << i <<"] value : " << token.Get_attribute()[i].Value() << std::endl;
++      }
++       
+         const typename Token::Attribute* equiv_attribute =
+             token.GetAttributeItem(html_names::kHttpEquivAttr);
+         if (equiv_attribute) {
+@@ -961,9 +1222,16 @@ void TokenPreloadScanner::ScanCommon(
+                   content_attribute->Value(), document_url_, nullptr);
+             }
+           }
++          // fix : preload_scanner_tester +
++          fout << "kStarttag_7" << std::endl;
++          fout.close();
+           return;
+         }
++        // fix : preload_scanner_tester +
++        else{
+ 
++            fout << "kStarttag_7_not_if" << std::endl;
++        }
+         HandleMetaNameAttribute(token, document_parameters_.get(),
+                                 media_values_.Get(), &css_scanner_, viewport);
+       }
+@@ -971,6 +1239,9 @@ void TokenPreloadScanner::ScanCommon(
+       if (Match(tag_impl, html_names::kPictureTag)) {
+         in_picture_ = true;
+         picture_data_ = PictureData();
++        // fix : preload_scanner_tester +
++        fout << "kStarttag_8" << std::endl;
++        fout.close();
+         return;
+       } else if (!Match(tag_impl, html_names::kSourceTag) &&
+                  !Match(tag_impl, html_names::kImgTag)) {
+@@ -978,26 +1249,58 @@ void TokenPreloadScanner::ScanCommon(
+         // child.
+         in_picture_ = false;
+         picture_data_.picked = false;
++        // fix : preload_scanner_tester +
++        fout << "kStarttag_9" << std::endl;
+       }
+ 
+       StartTagScanner scanner(
+           tag_impl, media_values_, document_parameters_->integrity_features,
+           scanner_type_, priority_hints_origin_trial_enabled_);
++
++      // +
++      // 여기서 token의 attr list에 link일떄 rel이 없으면 preload로 세팅해놓고 해보자
++
+       scanner.ProcessAttributes(token.Attributes());
+       // TODO(yoav): ViewportWidth is currently racy and might be zero in some
+       // cases, at least in tests. That problem will go away once
+       // ParseHTMLOnMainThread lands and MediaValuesCached is eliminated.
+       if (in_picture_ && media_values_->ViewportWidth())
+         scanner.HandlePictureSourceURL(picture_data_);
++
++      // + 일단 여기서 preload request가 만들어짐, CreatePreloadRequest를 수정해 preload request의 fetchparameter 수정
+       std::unique_ptr<PreloadRequest> request = scanner.CreatePreloadRequest(
+           predicted_base_element_url_, source, client_hints_preferences_,
+           picture_data_, *document_parameters_);
++
+       if (request) {
++        // fix : preload_scanner_tester +
++        if(Match(tag_impl,html_names::kScriptTag)){
++          fout << "kscript prelaod request" << std::endl;
++          if(request->DeferOption() == FetchParameters::kNoDefer) fout << "no defer" << std::endl; 
++          if(request->DeferOption() == FetchParameters::kLazyLoad) fout << "lazy load" << std::endl; 
++          if(request->DeferOption() == FetchParameters::kIdleLoad) fout << "idle load" << std::endl; 
++        }else if(Match(tag_impl, html_names::kLinkTag)){
++          fout << "klinktag preload request" << std::endl;
++          if(request->DeferOption() == FetchParameters::kNoDefer) fout << "no defer" << std::endl; 
++          if(request->DeferOption() == FetchParameters::kLazyLoad) fout << "lazy load" << std::endl; 
++          if(request->DeferOption() == FetchParameters::kIdleLoad) fout << "idle load" << std::endl; 
++        }
++        fout.close();
+         requests.push_back(std::move(request));
+       }
++      // fix : preload_scanner_tester +
++      else{
++        fout << "kStarttag_10 but not preload" << std::endl;
++        fout.close();
++      }
+       return;
+     }
+-    default: { return; }
++    default: { 
++      // fix : preload_scanner_tester +
++      fout << "default" << std::endl;
++      fout.close();
++      return; 
++    }
+   }
+ }
+ 
+@@ -1036,6 +1339,7 @@ PreloadRequestStream HTMLPreloadScanner::Scan(
+     const KURL& starting_base_element_url,
+     base::Optional<ViewportDescription>* viewport,
+     bool& has_csp_meta_tag) {
++
+   // HTMLTokenizer::updateStateFor only works on the main thread.
+   DCHECK(IsMainThread());
+ 
+diff --git a/third_party/blink/renderer/core/html/parser/preload_request.h b/third_party/blink/renderer/core/html/parser/preload_request.h
+index b33b6e3..209c88c 100644
+--- a/third_party/blink/renderer/core/html/parser/preload_request.h
++++ b/third_party/blink/renderer/core/html/parser/preload_request.h
+@@ -95,6 +95,11 @@ class CORE_EXPORT PreloadRequest {
+     script_type_ = script_type;
+   }
+ 
++  // +
++  // resource type은 enum type
++  const String& Getcharset() const { return charset_; }
++
++
+   // Only scripts and css stylesheets need to have integrity set on preloads.
+   // This is because neither resource keeps raw data around to redo an
+   // integrity check. A resource in memory cache needs integrity
+@@ -112,7 +117,7 @@ class CORE_EXPORT PreloadRequest {
+   bool IsImageSetForTestingOnly() const {
+     return is_image_set_ == ResourceFetcher::kImageIsImageSet;
+   }
+-
++  
+  private:
+   PreloadRequest(const String& initiator_name,
+                  const TextPosition& initiator_position,
+diff --git a/third_party/blink/renderer/core/loader/preload_helper.cc b/third_party/blink/renderer/core/loader/preload_helper.cc
+index 91f685d1..f92932f 100644
+--- a/third_party/blink/renderer/core/loader/preload_helper.cc
++++ b/third_party/blink/renderer/core/loader/preload_helper.cc
+@@ -509,6 +509,9 @@ void PreloadHelper::ModulePreloadIfNeeded(
+ 
+ Resource* PreloadHelper::PrefetchIfNeeded(const LinkLoadParameters& params,
+                                           Document& document) {
++
++  // + work in future 
++
+   if (params.rel.IsLinkPrefetch() && params.href.IsValid() &&
+       document.GetFrame()) {
+     UseCounter::Count(document, WebFeature::kLinkRelPrefetch);
